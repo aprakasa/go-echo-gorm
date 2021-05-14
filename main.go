@@ -39,7 +39,7 @@ func (s Store) createProject(c echo.Context) error {
 	}
 
 	if err := s.DB.Create(&project).Error; err != nil {
-		return c.JSON(http.StatusBadRequest, Response{"unable to save project", nil})
+		return c.JSON(http.StatusBadRequest, Response{err.Error(), nil})
 	}
 
 	return c.JSON(http.StatusCreated, Response{"project created", project})
@@ -85,16 +85,12 @@ func (s Store) updateProject(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, Response{"unable to bind data", nil})
 	}
 
-	err := s.DB.First(&project, id).Error
+	err := s.DB.Model(&project).Where("id=?", id).Updates(&project).First(&project, id).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return c.JSON(http.StatusNotFound, Response{"project not found", id})
 	} else if err != nil {
-		return c.JSON(http.StatusBadRequest, Response{"unable to display project", nil})
-	}
-
-	if err := s.DB.Save(&project).Error; err != nil {
-		return c.JSON(http.StatusBadRequest, Response{"unable to update project", nil})
+		return c.JSON(http.StatusBadRequest, Response{err.Error(), nil})
 	}
 
 	return c.JSON(http.StatusOK, Response{"project updated", project})
@@ -107,8 +103,12 @@ func (s Store) deleteProject(c echo.Context) error {
 
 	var project Projects
 
-	if err := s.DB.Delete(&project, id).Error; err != nil {
-		return c.JSON(http.StatusBadRequest, Response{"unable to delete project", nil})
+	err := s.DB.Model(&project).Where("id=?", id).Delete(&project, id).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return c.JSON(http.StatusNotFound, Response{"project not found", id})
+	} else if err != nil {
+		return c.JSON(http.StatusBadRequest, Response{err.Error(), nil})
 	}
 
 	return c.NoContent(http.StatusNoContent)
